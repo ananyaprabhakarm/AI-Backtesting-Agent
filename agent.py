@@ -1,7 +1,8 @@
 from data_engine import fetch_historicaldata
+import re
 
 def get_user_rule():
-    rule = input("Enter: ").strip().lower()
+    rule = input("Enter the : ").strip()
     return rule
 
 def translate_rule_to_python(rule):
@@ -16,25 +17,30 @@ def translate_rule_to_python(rule):
         "high price": "row['high']",
         "low price": "row['low']",
         "volume": "row['volume']",
+        "is greater than": ">",
+        "is above": ">",
+        "is more than": ">",
         "greater than": ">",
-        "less than": "<",
-        "equals to": "==",
-        "equal to": "==",
         "above": ">",
+        "is less than": "<",
+        "is below": "<",
+        "less than": "<",
         "below": "<",
         "crosses above": ">",
         "crosses below": "<",
+        "is equal to": "==",
+        "equals to": "==",
+        "is": "==",
         "and": "and",
         "or": "or"
     }
 
+    rule = re.sub(r'\s*([<>=!]+)\s*', r' \1 ', rule).strip()
 
     for key, value in replacements.items():
         rule = rule.replace(key, value)
 
-
     rule = ' '.join(rule.split())
-
 
     if ">" in rule or "<" in rule or "==" in rule:
         return rule
@@ -71,7 +77,7 @@ if __name__ == "__main__":
 '''
     with open("generated_strategy.py", "w") as f:
         f.write(script)
-    print("✅ Strategy saved in generated_strategy.py")
+    print("Strategy saved in generated_strategy.py")
 
 def main():
     try:
@@ -79,7 +85,7 @@ def main():
         python_condition = translate_rule_to_python(rule)
         generate_strategy_script(python_condition)
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"Error: {e}")
 
 if __name__ == "__main__":
     main()

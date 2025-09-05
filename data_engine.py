@@ -17,3 +17,6 @@ def fetch_historicaldata(stock, from_date, to_date, timeframe):
     
     return pd.DataFrame(data)
 
+if __name__ == "__main__":
+    df = fetch_historicaldata("AAPL", "2023-01-01", "2023-01-10", "D")
+    print(df)

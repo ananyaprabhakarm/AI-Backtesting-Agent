@@ -2,14 +2,14 @@
 from data_engine import fetch_historicaldata
 
 def backtest_strategy():
-    df = fetch_historicaldata()
+    df = fetch_historicaldata("AAPL", "2023-01-01", "2023-01-10", "D")
     position = None
     signals = []
 
     for i in range(len(df)):
         row = df.iloc[i]
 
-        if close < open:
+        if row['close'] > 150:
             if position != 'long':
                 print(f"BUY SIGNAL at {row['date']} | Price: {row['close']}")
                 position = 'long'
