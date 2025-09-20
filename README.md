@@ -11,7 +11,7 @@ This project is an **AI-powered trading strategy agent** that takes in natural l
 
 - 🗣️ Accepts strategy in plain English
 - 🧠 Parses and converts it into Python condition
-- 📉 Fetches dummy historical data (for stock: `NIFTY`)
+- 📉 Fetches data from yfinance
 - 🧪 Applies your strategy logic
 - 📝 Generates a runnable script to print buy signals
 
