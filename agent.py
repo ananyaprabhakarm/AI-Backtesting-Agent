@@ -1,4 +1,4 @@
-from data_engine import fetch_historicaldata
+from data_engine import fetch_historical_data
 import re
 
 def get_user_rule():
@@ -13,6 +13,7 @@ def translate_rule_to_python(rule):
         "enter long when": "",
         "purchase when": "",
         "close price": "row['close']",
+        "closing price": "row['close']",
         "open price": "row['open']",
         "high price": "row['high']",
         "low price": "row['low']",
@@ -48,10 +49,14 @@ def translate_rule_to_python(rule):
 
 def generate_strategy_script(condition_python):
     script = f'''# generated_strategy.py
-from data_engine import fetch_historicaldata
+from data_engine import fetch_historical_data
+stock = input("Enter stock ticker (e.g., AAPL, NVDA, SPY): ").strip().upper()
+from_date = input("Enter start date (YYYY-MM-DD): ").strip()
+to_date = input("Enter end date (YYYY-MM-DD): ").strip()
+timeframe = input("Enter timeframe (e.g., 1d for daily, 1h for hourly): ").strip()
 
 def backtest_strategy():
-    df = fetch_historicaldata()
+    df = fetch_historical_data(stock, from_date, to_date, timeframe)
     position = None
     signals = []
 

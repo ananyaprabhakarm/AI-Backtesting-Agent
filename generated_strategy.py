@@ -1,15 +1,19 @@
 # generated_strategy.py
-from data_engine import fetch_historicaldata
+from data_engine import fetch_historical_data
+stock = input("Enter stock ticker (e.g., AAPL, NVDA, SPY): ").strip().upper()
+from_date = input("Enter start date (YYYY-MM-DD): ").strip()
+to_date = input("Enter end date (YYYY-MM-DD): ").strip()
+timeframe = input("Enter timeframe (e.g., 1d for daily, 1h for hourly): ").strip()
 
 def backtest_strategy():
-    df = fetch_historicaldata("AAPL", "2023-01-01", "2023-01-10", "D")
+    df = fetch_historical_data(stock, from_date, to_date, timeframe)
     position = None
     signals = []
 
     for i in range(len(df)):
         row = df.iloc[i]
 
-        if row['close'] > 150:
+        if row['close'] > 40:
             if position != 'long':
                 print(f"BUY SIGNAL at {row['date']} | Price: {row['close']}")
                 position = 'long'
