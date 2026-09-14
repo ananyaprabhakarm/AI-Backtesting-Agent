@@ -3,6 +3,10 @@
 Also writes generated_strategy.py — a standalone, re-runnable copy of
 the same backtest — for transparency and sharing.
 """
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from data_engine import fetch_historical_data
 from engine.codegen import generate_script
 from engine.backtest import run_backtest
@@ -38,7 +42,7 @@ def main():
     try:
         entry_text = input("Enter your entry rule (e.g. 'buy when close crosses above sma_20'): ").strip()
         exit_text = input("Enter an exit rule (optional, press Enter to exit on the opposite condition): ").strip()
-        use_ai = input("Use AI (Claude) to interpret the rule? [y/N]: ").strip().lower() == "y"
+        use_ai = input("Use AI (Gemini) to interpret the rule? [y/N]: ").strip().lower() == "y"
 
         rule = parse_rule_text(entry_text, exit_text, use_ai)
 

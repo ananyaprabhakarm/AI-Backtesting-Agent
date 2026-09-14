@@ -1,9 +1,9 @@
-"""Claude-powered rule parser.
+"""Gemini-powered rule parser.
 
-Claude only ever returns a validated RuleSchema (via structured
-outputs) describing fields/operators/values in plain text — it never
-generates Python or any other executable code. Every value it returns
-still passes through the exact same allowlist as the regex parser
+Gemini only ever returns a validated RuleSchema (via structured output)
+describing fields/operators/values in plain text — it never generates
+Python or any other executable code. Every value it returns still
+passes through the exact same allowlist as the regex parser
 (engine.conditions.Condition validation), so a prompt-injected or
 hallucinated field name is rejected the same way a malicious typed
 rule would be. This function raises on any failure (missing
@@ -18,7 +18,8 @@ from pydantic import BaseModel
 from engine.conditions import Condition, ConditionGroup, Rule
 from engine.parser_regex import resolve_field_or_number
 
-DEFAULT_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-opus-5")
+# Reads GEMINI_API_KEY or GOOGLE_API_KEY automatically (via genai.Client()).
+DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
 SYSTEM_PROMPT = """You translate a plain-English trading rule into a structured comparison.
 
@@ -65,17 +66,20 @@ def _to_condition_group(schema: RuleSchema) -> ConditionGroup:
 
 
 def parse_condition_group_with_llm(text: str, model: Optional[str] = None) -> ConditionGroup:
-    import anthropic  # imported lazily so the regex-only path never requires the package
+    from google import genai  # imported lazily so the regex-only path never requires the package
+    from google.genai import types
 
-    client = anthropic.Anthropic()
-    response = client.messages.parse(
+    client = genai.Client()
+    response = client.models.generate_content(
         model=model or DEFAULT_MODEL,
-        max_tokens=1024,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": text}],
-        output_format=RuleSchema,
+        contents=text,
+        config=types.GenerateContentConfig(
+            system_instruction=SYSTEM_PROMPT,
+            response_mime_type="application/json",
+            response_schema=RuleSchema,
+        ),
     )
-    return _to_condition_group(response.parsed_output)
+    return _to_condition_group(response.parsed)
 
 
 def parse_rule_with_llm(entry_text: str, exit_text: Optional[str] = None, model: Optional[str] = None) -> Rule:

@@ -7,6 +7,9 @@ from datetime import date, timedelta
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from data_engine import fetch_historical_data
 from engine.backtest import run_backtest
@@ -22,9 +25,9 @@ with st.sidebar:
     entry_text = st.text_input("Entry rule", "buy when close crosses above sma_20")
     exit_text = st.text_input("Exit rule (optional)", "")
     use_ai = st.checkbox(
-        "Use AI (Claude) to interpret the rule",
+        "Use AI (Gemini) to interpret the rule",
         value=False,
-        help="Requires ANTHROPIC_API_KEY to be set. Falls back to the built-in rule-based parser on failure.",
+        help="Requires GEMINI_API_KEY to be set. Falls back to the built-in rule-based parser on failure.",
     )
 
     st.header("Data")

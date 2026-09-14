@@ -3,6 +3,7 @@ numpy
 yfinance
 streamlit
 plotly
-anthropic
+google-genai
 pydantic
+python-dotenv
 pytest
