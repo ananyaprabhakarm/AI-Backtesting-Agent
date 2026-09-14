@@ -1,18 +1,27 @@
 # AI Backtesting Agent
 
-Turns a plain-English trading rule into a runnable Python backtest against real historical stock data.
+Turns a plain-English trading rule into a backtest against real historical stock data — with technical indicators, position sizing, and performance metrics. Use it from the CLI, from a web UI, or let Claude interpret rules that plain pattern-matching can't parse.
 
 ```
-Enter your strategy rule: Buy when close is above 40
+Entry rule: buy when close crosses above sma_20
 ```
 
-...generates a standalone script (`generated_strategy.py`) that pulls historical prices for a ticker you choose and prints buy/sell signals wherever your rule triggers.
+...runs a full backtest and reports total return, win rate, max drawdown, and Sharpe ratio — plus writes a standalone, re-runnable copy of the backtest to `generated_strategy.py`.
 
-## How it works
+## Architecture
 
-- [agent.py](agent.py) — reads your rule, translates it into a Python condition, and writes `generated_strategy.py`
 - [data_engine.py](data_engine.py) — fetches historical OHLCV data from Yahoo Finance via `yfinance`
-- `generated_strategy.py` — auto-generated each time you run the agent; not meant to be hand-edited
+- [engine/](engine/) — the backtesting engine
+  - [conditions.py](engine/conditions.py) — the `Condition`/`Rule` model. **Every rule, however it was parsed, is validated against a strict allowlist of fields, operators, and values before it can run** — this is what makes rule text safe to turn into a backtest rather than a code-injection vector
+  - [indicators.py](engine/indicators.py) — SMA, EMA, RSI, MACD, Bollinger Bands, computed on demand
+  - [parser_regex.py](engine/parser_regex.py) — deterministic, no-network rule parser
+  - [parser_llm.py](engine/parser_llm.py) — Claude-powered rule parser for phrasing the regex parser can't handle
+  - [backtest.py](engine/backtest.py) — the single-position backtest loop with position sizing
+  - [metrics.py](engine/metrics.py) — total return, win rate, max drawdown, Sharpe ratio
+  - [codegen.py](engine/codegen.py) — renders a validated `Rule` into a standalone script
+- [agent.py](agent.py) — CLI entry point
+- [app.py](app.py) — Streamlit web UI
+- [tests/](tests/) — unit tests for the engine (`pytest tests/`)
 
 ## Setup
 
@@ -25,49 +34,58 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+To enable AI-assisted rule parsing, copy `.env.example` to `.env` and add an [Anthropic API key](https://console.anthropic.com/), or export `ANTHROPIC_API_KEY` directly. Without it, the app still works — it just uses the deterministic rule-based parser and AI parsing falls back to it automatically.
+
 ## Usage
 
-**Step 1 — generate a strategy from a rule:**
+### CLI
 
 ```bash
 python agent.py
 ```
 
-```
-Enter your strategy rule: Buy when close price crosses above open price
-```
+Prompts you for an entry rule, an optional exit rule, whether to use AI parsing, a ticker, a date range, a timeframe, initial capital, and position sizing — then prints the trade log and metrics, and saves `generated_strategy.py`.
 
-**Step 2 — run the generated backtest:**
+### Web UI
 
 ```bash
-python generated_strategy.py
+streamlit run app.py
 ```
 
-```
-Enter stock ticker (e.g., AAPL, NVDA, SPY): AAPL
-Enter start date (YYYY-MM-DD): 2024-01-01
-Enter end date (YYYY-MM-DD): 2024-02-01
-Enter timeframe (e.g., 1d for daily, 1h for hourly): 1d
+Configure your strategy in the sidebar and click **Run backtest** to see the price chart with indicator overlays and buy/sell markers, the equity curve, metrics, and the trade log.
 
-BUY SIGNAL at 2024-01-03 00:00:00 | Price: 182.03
-SELL SIGNAL at 2024-01-04 00:00:00 | Price: 179.72
-...
+### Tests
 
-=== Backtest Summary ===
-Total signals generated: 6
+```bash
+pytest tests/
 ```
 
 ## Supported rule phrasing
 
-The translator recognizes:
+**Fields:** `close`, `open`, `high`, `low`, `volume` (also `close price` / `closing price`, etc.)
 
-- **Fields:** `close`/`close price`, `open`/`open price`, `high`/`high price`, `low`/`low price`, `volume`
-- **Comparisons:** `is above` / `greater than` / `crosses above` (`>`), `is below` / `less than` / `crosses below` (`<`), `is` / `is equal to` (`==`)
-- **Prefixes** (stripped): `buy when`, `enter long when`, `purchase when`
-- Or write conditions directly with symbols, e.g. `close > open`
+**Indicators:** `sma_20` / `20 day sma` / `20 day moving average`, `ema_50` / `50 day ema`, `rsi_14` / `14 day rsi`, `macd`, `macd signal`, `upper`/`lower bollinger band` (default period 20)
 
-If a rule can't be parsed into a comparison, the agent reports an error instead of generating a broken script.
+**Comparisons:** `is above` / `greater than` / `crosses above` (`>`), `is below` / `less than` / `crosses below` (`<`), `is` / `is equal to` (`==`)
 
-## Roadmap
+**Multiple conditions:** join with `and` or `or` (mixing both in one rule isn't supported — split it into two rules, or use AI parsing)
 
-This is being scaled up from a personal script into a proper product. Next up: a real strategy engine (indicators, multi-condition rules, position sizing), performance metrics (P&L, Sharpe, drawdown) instead of raw signal prints, and a web UI.
+**Prefixes** (stripped): `buy when`, `sell when`, `exit when`, `enter long when`, `purchase when`
+
+If the regex parser can't understand a rule, check **Use AI (Claude) to interpret the rule** in the web UI (or answer `y` in the CLI) to have Claude interpret it instead — its output still passes through the same field/operator allowlist, so it can't produce anything the regex parser couldn't have.
+
+## Design notes
+
+- **No code injection surface.** Rule text — from either parser — never gets turned into Python before being validated. It's parsed into `Condition(field, operator, value)` objects, and `Condition` rejects anything outside its field/operator allowlist. Even `codegen.py`, which writes an actual `.py` file, only ever splices in text produced by validated `Condition.render()` calls.
+- **Position sizing** commits a configurable fraction of available cash to each new entry and compounds — win streaks grow position size, losses shrink it.
+- **Backtests are long-only, single-position.** An open position at the end of the window is closed at the last bar's price so metrics reflect the full period.
+
+## What's next
+
+This is scaling from a personal script into a real product. Worth discussing before building further:
+
+- **Data provider**: yfinance is fine for prototyping but rate-limits and has gaps. A paid provider (Polygon, Alpaca, Tiingo) is the next step once this needs to be reliable — that requires an account and API keys on your end.
+- **Multi-position / portfolio backtesting**: right now it's one position in one ticker at a time.
+- **More indicators & strategy composition**: stop-loss/take-profit rules, trailing stops, multi-symbol rules.
+- **Persistence**: saving strategies and backtest runs somewhere other than a local file (a database) once this has users.
+- **Auth & hosting**: if this becomes a hosted web product rather than something run locally.
