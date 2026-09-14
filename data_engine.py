@@ -3,12 +3,18 @@ import yfinance as yf
 
 def fetch_historical_data(stock, from_date, to_date, timeframe):
     
-    try:    
-        df = yf.download(tickers=stock, start=from_date, end=to_date, interval=timeframe)
+    try:
+        df = yf.download(tickers=stock, start=from_date, end=to_date, interval=timeframe, progress=False)
 
         if df.empty:
             print(f"No data found for ticker '{stock}'. It might be an invalid ticker or no data exists for the given date range.")
             return pd.DataFrame()
+
+        # Recent yfinance versions return MultiIndex columns (price, ticker)
+        # even for a single ticker. Flatten to plain column names so
+        # downstream code can index with row['close'] and get a scalar.
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
 
         df.rename(columns={
             'Open': 'open',

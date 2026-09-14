@@ -2,50 +2,59 @@ from data_engine import fetch_historical_data
 import re
 
 def get_user_rule():
-    rule = input("Enter the : ").strip()
+    rule = input("Enter your strategy rule: ").strip()
     return rule
 
 def translate_rule_to_python(rule):
     rule = rule.lower()
 
-    replacements = {
-        "buy when": "",
-        "enter long when": "",
-        "purchase when": "",
-        "close price": "row['close']",
-        "closing price": "row['close']",
-        "open price": "row['open']",
-        "high price": "row['high']",
-        "low price": "row['low']",
-        "volume": "row['volume']",
-        "is greater than": ">",
-        "is above": ">",
-        "is more than": ">",
-        "greater than": ">",
-        "above": ">",
-        "is less than": "<",
-        "is below": "<",
-        "less than": "<",
-        "below": "<",
-        "crosses above": ">",
-        "crosses below": "<",
-        "is equal to": "==",
-        "equals to": "==",
-        "is": "==",
-        "and": "and",
-        "or": "or"
-    }
+    # Order matters: longer/more specific phrases must be replaced before
+    # the shorter phrases they contain (e.g. "crosses above" before "above",
+    # "close price" before bare "close").
+    replacements = [
+        ("buy when", ""),
+        ("enter long when", ""),
+        ("purchase when", ""),
+        ("closing price", "row['close']"),
+        ("close price", "row['close']"),
+        ("open price", "row['open']"),
+        ("high price", "row['high']"),
+        ("low price", "row['low']"),
+        ("volume", "row['volume']"),
+        ("crosses above", ">"),
+        ("crosses below", "<"),
+        ("is greater than", ">"),
+        ("is more than", ">"),
+        ("is above", ">"),
+        ("greater than", ">"),
+        ("above", ">"),
+        ("is less than", "<"),
+        ("is below", "<"),
+        ("less than", "<"),
+        ("below", "<"),
+        ("is equal to", "=="),
+        ("equals to", "=="),
+        ("is", "=="),
+        ("close", "row['close']"),
+        ("open", "row['open']"),
+        ("high", "row['high']"),
+        ("low", "row['low']"),
+    ]
 
     rule = re.sub(r'\s*([<>=!]+)\s*', r' \1 ', rule).strip()
 
-    for key, value in replacements.items():
-        rule = rule.replace(key, value)
+    for phrase, value in replacements:
+        # Skip matches already inside a row['...'] we generated earlier
+        # (e.g. don't let bare "close" re-match inside row['close']).
+        pattern = r"(?<!\['])\b" + re.escape(phrase) + r"\b(?!'\])"
+        rule = re.sub(pattern, value, rule)
 
     rule = ' '.join(rule.split())
 
     if ">" in rule or "<" in rule or "==" in rule:
         return rule
-    
+
+    raise ValueError(f"Could not find a comparison in the rule: '{rule}'")
 
 def generate_strategy_script(condition_python):
     script = f'''# generated_strategy.py
