@@ -1,6 +1,6 @@
 """Structured, allowlisted representation of a strategy rule.
 
-Both parsers (regex-based and Claude-based) must produce Condition
+Both parsers (regex-based and Gemini-based) must produce Condition
 objects that pass validate(). Nothing downstream ever executes
 free-form text: the backtest engine evaluates Conditions directly in
 Python, and the standalone-script renderer only ever emits

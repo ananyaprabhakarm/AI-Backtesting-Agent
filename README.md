@@ -1,6 +1,6 @@
 # AI Backtesting Agent
 
-Turns a plain-English trading rule into a backtest against real historical stock data — with technical indicators, position sizing, and performance metrics. Use it from the CLI, from a web UI, or let Claude interpret rules that plain pattern-matching can't parse.
+Turns a plain-English trading rule into a backtest against real historical stock data — with technical indicators, position sizing, and performance metrics. Use it from the CLI, from a web UI, or let Gemini interpret rules that plain pattern-matching can't parse.
 
 ```
 Entry rule: buy when close crosses above sma_20
@@ -15,7 +15,7 @@ Entry rule: buy when close crosses above sma_20
   - [conditions.py](engine/conditions.py) — the `Condition`/`Rule` model. **Every rule, however it was parsed, is validated against a strict allowlist of fields, operators, and values before it can run** — this is what makes rule text safe to turn into a backtest rather than a code-injection vector
   - [indicators.py](engine/indicators.py) — SMA, EMA, RSI, MACD, Bollinger Bands, computed on demand
   - [parser_regex.py](engine/parser_regex.py) — deterministic, no-network rule parser
-  - [parser_llm.py](engine/parser_llm.py) — Claude-powered rule parser for phrasing the regex parser can't handle
+  - [parser_llm.py](engine/parser_llm.py) — Gemini-powered rule parser for phrasing the regex parser can't handle
   - [backtest.py](engine/backtest.py) — the single-position backtest loop with position sizing
   - [metrics.py](engine/metrics.py) — total return, win rate, max drawdown, Sharpe ratio
   - [codegen.py](engine/codegen.py) — renders a validated `Rule` into a standalone script
@@ -34,7 +34,7 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-To enable AI-assisted rule parsing, copy `.env.example` to `.env` and add an [Anthropic API key](https://console.anthropic.com/), or export `ANTHROPIC_API_KEY` directly. Without it, the app still works — it just uses the deterministic rule-based parser and AI parsing falls back to it automatically.
+To enable AI-assisted rule parsing, copy `.env.example` to `.env` and add a [Gemini API key](https://aistudio.google.com/apikey), or export `GEMINI_API_KEY` directly. Without it, the app still works — it just uses the deterministic rule-based parser and AI parsing falls back to it automatically.
 
 ## Usage
 
@@ -72,7 +72,7 @@ pytest tests/
 
 **Prefixes** (stripped): `buy when`, `sell when`, `exit when`, `enter long when`, `purchase when`
 
-If the regex parser can't understand a rule, check **Use AI (Claude) to interpret the rule** in the web UI (or answer `y` in the CLI) to have Claude interpret it instead — its output still passes through the same field/operator allowlist, so it can't produce anything the regex parser couldn't have.
+If the regex parser can't understand a rule, check **Use AI (Gemini) to interpret the rule** in the web UI (or answer `y` in the CLI) to have Gemini interpret it instead — its output still passes through the same field/operator allowlist, so it can't produce anything the regex parser couldn't have.
 
 ## Design notes
 
