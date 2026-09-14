@@ -1,82 +1,73 @@
-# 📈 AI Strategy Agent
+# AI Backtesting Agent
 
-This project is an **AI-powered trading strategy agent** that takes in natural language rules like:
+Turns a plain-English trading rule into a runnable Python backtest against real historical stock data.
 
-
-...and automatically generates a complete **Python backtest script** (`generated_strategy.py`) using historical stock data.
-
----
-
-## 🧠 Features
-
-- 🗣️ Accepts strategy in plain English
-- 🧠 Parses and converts it into Python condition
-- 📉 Fetches data from yfinance
-- 🧪 Applies your strategy logic
-- 📝 Generates a runnable script to print buy signals
-
----
-
-## 📁 Project Structure
 ```
-.
-├── agent.py # Main script to take strategy input & generate code
-├── data_engine.py # Function to fetch/generate dummy historical stock data
-├── generated_strategy.py # Auto-generated strategy file (after running agent)
-├── requirements.txt # Python dependencies
-└── README.md # You're here!
+Enter your strategy rule: Buy when close is above 40
 ```
 
+...generates a standalone script (`generated_strategy.py`) that pulls historical prices for a ticker you choose and prints buy/sell signals wherever your rule triggers.
 
----
+## How it works
 
-## 🔧 Installation
+- [agent.py](agent.py) — reads your rule, translates it into a Python condition, and writes `generated_strategy.py`
+- [data_engine.py](data_engine.py) — fetches historical OHLCV data from Yahoo Finance via `yfinance`
+- `generated_strategy.py` — auto-generated each time you run the agent; not meant to be hand-edited
 
-Make sure Python is installed, then install the required libraries:
+## Setup
 
----
-
-## 📥 Getting Started
-
-### Clone the Repository
+Requires Python 3.9+.
 
 ```bash
 git clone https://github.com/ananyaprabhakarm/AI-Backtesting-Agent.git
 cd AI-Backtesting-Agent
-```
-
-```bash
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
-## 🚀 How to Use
-### Step 1: Run the agent
-```
+
+## Usage
+
+**Step 1 — generate a strategy from a rule:**
+
+```bash
 python agent.py
 ```
-### Step 2: Enter your strategy rule (example):
-```
-Buy when close > open
-```
-### Step 3: Output
-```
-A new file generated_strategy.py will be created containing:
 
-    Data loading
-
-    Your strategy condition
-
-    Buy signal printing
 ```
-### Step 4: Run the generated strategy
+Enter your strategy rule: Buy when close price crosses above open price
 ```
+
+**Step 2 — run the generated backtest:**
+
+```bash
 python generated_strategy.py
+```
 
-✅ It will show the dates and prices where your condition was met.
 ```
-## 📊 Example Output
+Enter stock ticker (e.g., AAPL, NVDA, SPY): AAPL
+Enter start date (YYYY-MM-DD): 2024-01-01
+Enter end date (YYYY-MM-DD): 2024-02-01
+Enter timeframe (e.g., 1d for daily, 1h for hourly): 1d
+
+BUY SIGNAL at 2024-01-03 00:00:00 | Price: 182.03
+SELL SIGNAL at 2024-01-04 00:00:00 | Price: 179.72
+...
+
+=== Backtest Summary ===
+Total signals generated: 6
 ```
-Buy signals:
-         date     open    close
-0  2023-01-01  105.34   110.89
-3  2023-01-04  120.45   125.10
-```
+
+## Supported rule phrasing
+
+The translator recognizes:
+
+- **Fields:** `close`/`close price`, `open`/`open price`, `high`/`high price`, `low`/`low price`, `volume`
+- **Comparisons:** `is above` / `greater than` / `crosses above` (`>`), `is below` / `less than` / `crosses below` (`<`), `is` / `is equal to` (`==`)
+- **Prefixes** (stripped): `buy when`, `enter long when`, `purchase when`
+- Or write conditions directly with symbols, e.g. `close > open`
+
+If a rule can't be parsed into a comparison, the agent reports an error instead of generating a broken script.
+
+## Roadmap
+
+This is being scaled up from a personal script into a proper product. Next up: a real strategy engine (indicators, multi-condition rules, position sizing), performance metrics (P&L, Sharpe, drawdown) instead of raw signal prints, and a web UI.
