@@ -4,11 +4,9 @@
 Entry rule: row['close'] > row['sma_20']
 Exit rule:  not (row['close'] > row['sma_20'])
 """
-import pandas as pd
-
 from data_engine import fetch_historical_data
-from engine.backtest import BacktestResult, Trade
-from engine.indicators import compute_indicators
+from engine.backtest import run_backtest
+from engine.conditions import Condition, ConditionGroup, Rule
 from engine.metrics import compute_metrics
 
 stock = input("Enter stock ticker (e.g., AAPL, NVDA, SPY): ").strip().upper()
@@ -18,66 +16,43 @@ timeframe = input("Enter timeframe (e.g., 1d for daily, 1h for hourly): ").strip
 
 INITIAL_CAPITAL = 10000.0
 POSITION_SIZE_PCT = 1.0
-INDICATORS = ['sma_20']
+COMMISSION_PCT = 0.001
+SLIPPAGE_PCT = 0.0005
+
+RULE = Rule(entry=ConditionGroup(conditions=[Condition('close', '>', 'sma_20')], logic='and'), exit=None)
 
 
 def backtest_strategy():
     df = fetch_historical_data(stock, from_date, to_date, timeframe)
     if df.empty:
         return
-    df = compute_indicators(df, INDICATORS)
 
-    cash = INITIAL_CAPITAL
-    shares = 0.0
-    entry_date = entry_price = None
-    trades = []
-    equity_curve = []
-
-    for i in range(len(df)):
-        row = df.iloc[i]
-        in_position = shares > 0
-
-        if not in_position:
-            if row['close'] > row['sma_20']:
-                allocation = cash * POSITION_SIZE_PCT
-                price = row['close']
-                if price > 0:
-                    shares = allocation / price
-                    cash -= shares * price
-                    entry_date, entry_price = row['date'], price
-                    print(f"BUY SIGNAL at {row['date']} | Price: {price}")
-        else:
-            if not (row['close'] > row['sma_20']):
-                price = row['close']
-                cash += shares * price
-                trades.append(Trade(entry_date, entry_price, row['date'], price, shares))
-                print(f"SELL SIGNAL at {row['date']} | Price: {price}")
-                shares = 0.0
-
-        equity_curve.append(cash + shares * row['close'])
-
-    if shares > 0:
-        last = df.iloc[-1]
-        cash += shares * last['close']
-        trades.append(Trade(entry_date, entry_price, last['date'], last['close'], shares))
-        equity_curve[-1] = cash
-
-    result = BacktestResult(
-        trades=trades,
-        equity_curve=pd.Series(equity_curve),
-        dates=df['date'],
+    result = run_backtest(
+        df, RULE,
         initial_capital=INITIAL_CAPITAL,
-        final_equity=equity_curve[-1] if equity_curve else INITIAL_CAPITAL,
+        position_size_pct=POSITION_SIZE_PCT,
+        commission_pct=COMMISSION_PCT,
+        slippage_pct=SLIPPAGE_PCT,
     )
-    metrics = compute_metrics(result)
+
+    for t in result.trades:
+        print(f"BUY  {t.entry_date} @ {t.entry_price:.2f}  ->  SELL {t.exit_date} @ {t.exit_price:.2f}  "
+              f"| P&L: {t.pnl:.2f} ({t.return_pct:.2f}%)")
+
+    metrics = compute_metrics(result, df=df)
 
     print("\n=== Backtest Summary ===")
-    print(f"Total trades: {metrics.num_trades}")
-    print(f"Total return: {metrics.total_return_pct:.2f}%")
-    print(f"Win rate: {metrics.win_rate_pct:.2f}%")
-    print(f"Avg trade return: {metrics.avg_trade_return_pct:.2f}%")
-    print(f"Max drawdown: {metrics.max_drawdown_pct:.2f}%")
-    print(f"Sharpe ratio: {metrics.sharpe_ratio:.2f}")
+    print(f"Total trades:      {metrics.num_trades}")
+    print(f"Total return:      {metrics.total_return_pct:.2f}%")
+    print(f"Win rate:          {metrics.win_rate_pct:.2f}%")
+    print(f"Avg trade return:  {metrics.avg_trade_return_pct:.2f}%")
+    print(f"Max drawdown:      {metrics.max_drawdown_pct:.2f}%")
+    print(f"Sharpe ratio:      {metrics.sharpe_ratio:.2f}")
+    print(f"Sortino ratio:     {metrics.sortino_ratio:.2f}")
+    print(f"Calmar ratio:      {metrics.calmar_ratio:.2f}")
+    print(f"Profit factor:     {metrics.profit_factor:.2f}")
+    if metrics.alpha_pct is not None:
+        print(f"Alpha vs buy&hold: {metrics.alpha_pct:.2f}%")
 
 
 if __name__ == "__main__":
